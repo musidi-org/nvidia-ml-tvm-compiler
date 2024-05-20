@@ -1,0 +1,6 @@
+{
+  "name": "nvidia-ml-tvm-compiler",
+  "scripts": {
+    "deploy:modal": "poetry run modal deploy modal/deploy.py"
+  }
+}

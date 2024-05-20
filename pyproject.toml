@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "nvidia-ml-tvm-compiler"
+version = "0.1.0"
+description = "Compile fast ML models for NVIDIA GPUs using TVM"
+authors = ["Meng Lin <menglinmaker@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

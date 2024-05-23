@@ -50,10 +50,8 @@ def incrementTuneModel(modelPath, target, tuningRecords):
     target=target,
     tuning_records = tuningRecords,
     prior_records = tuningRecords,
-    trials=100,
-    min_repeat_ms=100,
-    timeout=2,
-    number=3,
+    trials=2000,
+    timeout=1,
     parallel=16,
     enable_autoscheduler = True, # Auto-scheduler is faster than AutoTVM
   )
@@ -77,23 +75,17 @@ def tuneModel(modelPath, target, device):
   timeStamp.stampPrint('COMPILE OLD MODEL')
   
   testModel(package, device)
-  oldPerformance = previousPerformance = timeStamp.stampPrint('RUN OLD MODEL')
+  oldPerformance = timeStamp.stampPrint('RUN OLD MODEL')
   
-  for i in range(10):
-    incrementTuneModel(modelPath, target, tuningRecords)
-    timeStamp.stampPrint('TUNING MODEL')
+  incrementTuneModel(modelPath, target, tuningRecords)
+  timeStamp.stampPrint('TUNING MODEL')
 
-    package =  compileModel(model, target, tuningRecords, packagePath)
-    timeStamp.stampPrint('COMPILE NEW MODEL')
-    
-    testModel(package, device)
-    newPerformance = timeStamp.stampPrint('RUN NEW MODEL')
+  package =  compileModel(model, target, tuningRecords, packagePath)
+  timeStamp.stampPrint('COMPILE NEW MODEL')
   
-    modelSpeedup = oldPerformance / newPerformance
-    print(f'IMPROVEMENT: x{modelSpeedup}')
-    
-    if previousPerformance / newPerformance < 1.02:
-      print("\n\n\nEARLY BREAK - NO PERFORMANCE IMPROVEMENT\n\n\n")
-      break
-    previousPerformance = newPerformance
+  testModel(package, device)
+  newPerformance = timeStamp.stampPrint('RUN NEW MODEL')
+
+  modelSpeedup = oldPerformance / newPerformance
+  print(f'IMPROVEMENT: x{modelSpeedup}')
   return modelSpeedup

@@ -1,5 +1,6 @@
 import os
 import time
+import logging
 
 def createFile(filePath):
   if not os.path.exists(filePath): 
@@ -30,47 +31,69 @@ class TimeStamp:
 
 
 
+def testModel(package, device):
+  from tvm.driver import tvmc
+  print(tvmc.run(
+    package,
+    device=device,
+    repeat=10,
+    number=10,
+    benchmark=True,
+    end_to_end=True
+  ))
+  
+def incrementTuneModel(modelPath, target, tuningRecords):
+  from tvm.driver import tvmc
+  logging.getLogger('autotvm').setLevel(level=logging.ERROR)
+  tvmc.tune(
+    tvmc.load(modelPath),
+    target=target,
+    tuning_records = tuningRecords,
+    prior_records = tuningRecords,
+    trials=100,
+    min_repeat_ms=100,
+    timeout=2,
+    number=3,
+    parallel=16,
+    enable_autoscheduler = True, # Auto-scheduler is faster than AutoTVM
+  )
+  logging.getLogger('autotvm').setLevel(level=logging.INFO)
+  
+def compileModel(model, target, tuningRecords, packagePath):
+  from tvm.driver import tvmc
+  return tvmc.compile(model, target=target, tuning_records=tuningRecords, package_path=packagePath, output_format='tar')
+
 def tuneModel(modelPath, target, device):
   from tvm.driver import tvmc
+  tuningRecords = f'package/{fileBaseName(modelPath)}.json'
+  packagePath = f'package/{fileBaseName(modelPath)}.tar'
+  createFile(tuningRecords)
   timeStamp = TimeStamp()
   
   model = tvmc.load(modelPath)
   timeStamp.stampPrint('LOAD MODEL')
   
-  package = tvmc.compile(model, target=target)
+  package =  compileModel(model, target, tuningRecords, packagePath)
   timeStamp.stampPrint('COMPILE OLD MODEL')
   
-  print(tvmc.run(
-    package,
-    device=device,
-    repeat=10,
-    number=1
-  ))
-  oldPerformance = timeStamp.stampPrint('RUN OLD MODEL')
+  testModel(package, device)
+  oldPerformance = previousPerformance = timeStamp.stampPrint('RUN OLD MODEL')
   
-  tuningRecords = f'package/{fileBaseName(modelPath)}.json'
-  createFile(tuningRecords)
-  tvmc.tune(
-    tvmc.load(modelPath),
-    target=target,
-    enable_autoscheduler = True, # Auto-scheduler is faster than AutoTVM
-    trials=500,
-    prior_records = tuningRecords,
-    tuning_records = tuningRecords
-  )
-  timeStamp.stampPrint('TUNING MODEL')
+  for i in range(10):
+    incrementTuneModel(modelPath, target, tuningRecords)
+    timeStamp.stampPrint('TUNING MODEL')
+
+    package =  compileModel(model, target, tuningRecords, packagePath)
+    timeStamp.stampPrint('COMPILE NEW MODEL')
+    
+    testModel(package, device)
+    newPerformance = timeStamp.stampPrint('RUN NEW MODEL')
   
-  package = tvmc.compile(model, target=target, tuning_records=tuningRecords)
-  timeStamp.stampPrint('COMPILE NEW MODEL')
-  
-  print(tvmc.run(
-    package,
-    device=device,
-    repeat=10,
-    number=10
-  ))
-  newPerformance = timeStamp.stampPrint('RUN NEW MODEL')
-  
-  modelSpeedup = newPerformance / oldPerformance
-  print(f'IMPROVEMENT: x{modelSpeedup}')
+    modelSpeedup = oldPerformance / newPerformance
+    print(f'IMPROVEMENT: x{modelSpeedup}')
+    
+    if previousPerformance / newPerformance < 1.02:
+      print("\n\n\nEARLY BREAK - NO PERFORMANCE IMPROVEMENT\n\n\n")
+      break
+    previousPerformance = newPerformance
   return modelSpeedup

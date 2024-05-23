@@ -67,7 +67,7 @@ def tuneModel(modelPath, target, device):
     package,
     device=device,
     repeat=10,
-    number=1
+    number=10
   ))
   newPerformance = timeStamp.stampPrint('RUN NEW MODEL')
   

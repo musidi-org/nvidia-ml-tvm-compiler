@@ -1,0 +1,18 @@
+services:
+  server:
+    platform: linux/amd64
+    build:
+      context: ./modal
+    env_file:
+      - .env
+    ports:
+      - 8080:8080
+    volumes:
+      - type: bind
+        source: ./modal/compile
+        target: /compile
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 8000M
